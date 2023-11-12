@@ -25,10 +25,25 @@ RUN CGO_ENABLED=0 GOOS=linux GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -mod
 # https://hub.docker.com/_/alpine
 # https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
 FROM alpine:3
-RUN apk add --no-cache ca-certificates
+
+ARG USER=knative
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
+
+# Create and change to the app directory.
+WORKDIR "/home/${USER}/app"
+
+# Creates a non-root user to be used exclusively to run the application.
+# Install ca-certificates.
+RUN addgroup -g $USER_GID -S $USER && \
+    adduser -u $USER_UID -G $USER -h "/home/${USER}" -D $USER && \
+    apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=builder /app/servingcontainer /servingcontainer
+COPY --from=builder /app/servingcontainer ./servingcontainer
+
+# Set the non-root user as current.
+USER $USER
 
 # Run the web service on container startup.
-CMD ["/servingcontainer"]
+CMD ["./servingcontainer"]

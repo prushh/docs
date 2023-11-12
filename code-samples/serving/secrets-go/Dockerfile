@@ -17,11 +17,24 @@ RUN CGO_ENABLED=0 GOOS=linux GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -v -
 # https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
 FROM alpine
 
-# Enable the use of outbound https
-RUN apk add --no-cache ca-certificates
+ARG USER=knative
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
+
+# Create and change to the app directory.
+WORKDIR "/home/${USER}/app"
+
+# Creates a non-root user to be used exclusively to run the application.
+# Enable the use of outbound https.
+RUN addgroup -g $USER_GID -S $USER && \
+    adduser -u $USER_UID -G $USER -h "/home/${USER}" -D $USER && \
+    apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=builder /go/src/github.com/knative/docs/hellosecrets/hellosecrets /hellosecrets
+COPY --from=builder /go/src/github.com/knative/docs/hellosecrets/hellosecrets ./hellosecrets
+
+# Set the non-root user as current.
+USER $USER
 
 # Run the web service on container startup.
-CMD ["/hellosecrets"]
+CMD ["./hellosecrets"]
