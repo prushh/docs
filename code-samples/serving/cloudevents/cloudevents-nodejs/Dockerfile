@@ -12,7 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM registry.access.redhat.com/ubi8/nodejs-12
+FROM node:12-slim
+
+ARG USER=knative
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
+ARG ENV=production
+
+# Doc port listening port
+ENV PORT 8080
+# Set current node env
+ENV NODE_ENV $ENV
+
+# Create and change to the app directory.
+WORKDIR "/home/${USER}/app"
 
 # Copy application dependency manifests to the container image.
 # A wildcard is used to ensure both package.json AND package-lock.json are copied.
@@ -20,19 +33,17 @@ FROM registry.access.redhat.com/ubi8/nodejs-12
 COPY package*.json ./
 
 # Use ci is faster and more reliable following package-lock.json
-RUN npm ci --only=production
-
-# Doc port listening port
-ENV PORT 8080
-
-EXPOSE $PORT
-
-ARG ENV=production
-
-ENV NODE_ENV $ENV
-
-# Run the web service on container startup.
-CMD npm run $NODE_ENV
+RUN groupadd -g $USER_GID $USER && \
+    useradd -u $USER_UID -g $USER_GID -m $USER && \
+    npm ci --only=production
 
 # Copy local code to the container image.
 COPY . ./
+
+EXPOSE $PORT
+
+# Set the non-root user as current.
+USER $USER
+
+# Run the web service on container startup.
+CMD npm run $NODE_ENV
