@@ -59,27 +59,42 @@ cd knative-docs/code-samples/serving/hello-world/helloworld-python
    [official Python docker image](https://hub.docker.com/_/python/) for more
    details.
 
-    ```dockerfile
+    ```Dockerfile
     # Use the official lightweight Python image.
     # https://hub.docker.com/_/python
     FROM python:3.7-slim
 
+    ENV PORT=8080
+
     # Allow statements and log messages to immediately appear in the Knative logs
-    ENV PYTHONUNBUFFERED True
+    ENV PYTHONUNBUFFERED=True
 
     # Copy local code to the container image.
-    ENV APP_HOME /app
-    WORKDIR $APP_HOME
+    ENV APP_HOME=app
+
+    ARG USER=knative
+    ARG USER_UID=1001
+    ARG USER_GID=$USER_UID
+
+    # Create and change to the app directory.
+    WORKDIR "/home/${USER}/${APP_HOME}"
+
     COPY . ./
 
     # Install production dependencies.
-    RUN pip install Flask gunicorn
+    RUN groupadd -g $USER_GID $USER && \
+        useradd -u $USER_UID -g $USER_GID -m $USER && \
+        pip install Flask gunicorn
+
+    # Set the non-root user as current.
+    USER $USER
 
     # Run the web service on container startup. Here we use the gunicorn
     # webserver, with one worker process and 8 threads.
     # For environments with multiple CPU cores, increase the number of workers
     # to be equal to the cores available.
     CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app:app
+
     ```
 
 4. Create a `.dockerignore` file to ensure that any files related to a local
@@ -151,9 +166,6 @@ cd knative-docs/code-samples/serving/hello-world/helloworld-python
  This will wait until your service is deployed and ready, and ultimately it
  will print the URL through which you can access the service.
 
-
-
-
    During the creation of your service, Knative performs the following steps:
 
    - Creates a new immutable revision for this version of the app.
@@ -165,28 +177,31 @@ cd knative-docs/code-samples/serving/hello-world/helloworld-python
 ## Verification
 
  1. Run one of the followings commands to find the domain URL for your service.
+
    > Note: If your URL includes `example.com` then consult the setup instructions for
    > configuring DNS (e.g. with `sslip.io`), or [using a Custom Domain](https://knative.dev/docs/serving/using-a-custom-domain).
 
- ### kubectl
+### kubectl
 
  ```bash
  kubectl get ksvc helloworld-python  --output=custom-columns=NAME:.metadata.name,URL:.status.url
  ```
 
    Example:
+
  ```bash
  NAME                      URL
  helloworld-python    http://helloworld-python.default.1.2.3.4.sslip.io
  ```
 
- ### kn
+### kn
 
  ```bash
  kn service describe helloworld-python -o url
  ```
 
    Example:
+
  ```bash
  http://helloworld-python.default.1.2.3.4.sslip.io
  ```

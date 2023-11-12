@@ -101,7 +101,6 @@ local Docker Repository.
 
 ## Deploying to Knative Serving
 
-
 ### yaml
 
 Apply the [Service yaml definition](service.yaml):
@@ -115,7 +114,7 @@ kubectl apply -f service.yaml
 With `kn` you can deploy the service with
 
  ```bash
-kn service create helloworld-scala --image=docker.io/{username}/helloworld-scala --env TARGET="Scala Sample v1"
+ kn service create helloworld-scala --image=docker.io/{username}/helloworld-scala --env TARGET="Scala Sample v1"
  ```
 
  This will wait until your service is deployed and ready, and ultimately it will print the URL through which you can access the service.
@@ -134,28 +133,30 @@ kn service create helloworld-scala --image=docker.io/{username}/helloworld-scala
 
  Service 'helloworld-scala' created to latest revision 'helloworld-scala-abcd-1' is available at URL:
  http://helloworld-scala.default.1.2.3.4.sslip.io
-```
+ ```
 
 ### kubectl
 
  1. Find the service host:
+
  ```bash
-kubectl get ksvc helloworld-scala \
---output=custom-columns=NAME:.metadata.name,URL:.status.url
-# It will print something like this, the URL is what you're looking for.
-# NAME                URL
-# helloworld-scala    http://helloworld-scala.default.1.2.3.4.sslip.io
+ kubectl get ksvc helloworld-scala \
+ --output=custom-columns=NAME:.metadata.name,URL:.status.url
+ # It will print something like this, the URL is what you're looking for.
+ # NAME                URL
+ # helloworld-scala    http://helloworld-scala.default.1.2.3.4.sslip.io
  ```
 
 2. Finally, to try your service, use the obtained URL:
 
  ```bash
-curl -v http://helloworld-scala.default.1.2.3.4.sslip.io
+ curl -v http://helloworld-scala.default.1.2.3.4.sslip.io
  ```
 
-
 ### kn
+
  1. Find the service host:
+
 ```bash
 kn service describe helloworld-scala -o url
 ```

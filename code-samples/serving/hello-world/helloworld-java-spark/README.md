@@ -41,7 +41,9 @@ cd knative-docs/code-samples/serving/hello-world/helloworld-java
    additional information on multi-stage docker builds for Java see
    [Creating Smaller Java Image using Docker Multi-stage Build](https://github.com/arun-gupta/docker-java-multistage). Navigate to your project directory and copy the following code into a new file named `Dockerfile`:
 
-   ```docker
+   ```Dockerfile
+    # Use the official maven/Java 8 image to create a build artifact.
+    # https://hub.docker.com/_/maven
     FROM maven:3.5-jdk-8-alpine as builder
 
     # Copy local code to the container image.
@@ -49,15 +51,35 @@ cd knative-docs/code-samples/serving/hello-world/helloworld-java
     COPY pom.xml .
     COPY src ./src
 
+    # Build a release artifact.
     RUN mvn package -DskipTests
 
+    # Use the Official OpenJDK image for a lean production stage of our multi-stage build.
+    # https://hub.docker.com/_/openjdk
+    # https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
     FROM openjdk:8-jre-alpine
+
+    ENV PORT=8080
+
+    ARG USER=knative
+    ARG USER_UID=1001
+    ARG USER_GID=$USER_UID
+
+    # Create and change to the app directory.
+    WORKDIR "/home/${USER}/app"
+
+    # Creates a non-root user to be used exclusively to run the application.
+    RUN addgroup -g $USER_GID -S $USER && \
+        adduser -u $USER_UID -G $USER -h "/home/${USER}" -D $USER
 
     # Copy the jar to the production image from the builder stage.
     COPY --from=builder /app/target/helloworld-0.0.1-SNAPSHOT-jar-with-dependencies.jar helloworld.jar
 
-    ENV PORT 8080
-    EXPOSE 8080
+    EXPOSE $PORT
+
+    # Set the non-root user as current.
+    USER $USER
+
     # Run the web service on container startup.
     CMD ["java","-jar","helloworld.jar"]
    ```
@@ -125,15 +147,16 @@ After your service is created, Knative will perform the following steps:
 
  ```bash
  kn service describe helloworld-java -o url
-  ```
+ ```
 
  Example:
 
  ```bash
  http://helloworld-java.default.1.2.3.4.xip.io
-  ```
+ ```
 
  ### kubectl
+
  ```bash
   kubectl get ksvc helloworld-java  --output=custom-columns=NAME:.metadata.name,URL:.status.url
  ```
@@ -164,11 +187,13 @@ After your service is created, Knative will perform the following steps:
 To remove the sample app from your cluster, delete the service record:
 
 ### kn
+
  ```bash
  kn service delete helloworld-java
  ```
 
 ### kubectl
+
  ```bash
  kubectl delete --filename service.yaml
  ```

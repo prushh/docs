@@ -82,7 +82,9 @@ After the build has completed and the container is pushed to Docker Hub, you can
 Choose one of the following methods to deploy the app:
 
 ### yaml
+
 1. Create a new file, `service.yaml` and copy the following service definition into the file. Make sure to replace `{username}` with your Docker Hub username.
+
 ```yaml
 apiVersion: serving.knative.dev/v1
 kind: Service
@@ -98,17 +100,23 @@ spec:
             - name: TARGET
               value: "Shell Sample v1"
 ```
+
 Ensure that the container image value in `service.yaml` matches the container you built in the previous step.
+
 1. Apply the configuration using `kubectl`:
+
 ```bash
 kubectl apply --filename service.yaml
 ```
 
 ### kn
+
 1. With `kn` you can deploy the service with
+
 ```bash
 kn service create helloworld-shell --image=docker.io/{username}/helloworld-shell --env TARGET="Shell Sample v1"
 ```
+
 This will wait until your service is deployed and ready, and ultimately it will print the URL through which you can access the service.
 The output will look like:
 
@@ -137,21 +145,27 @@ During the creation of your service, Knative performs the following steps:
 
 1. Run one of the followings commands to find the domain URL for your service:
 
- ### kubectl
+### kubectl
+
 ```bash
 kubectl get ksvc helloworld-shell  --output=custom-columns=NAME:.metadata.name,URL:.status.url
 ```
+
 Example:
+
 ```bash
 NAME                URL
 helloworld-shell    http://helloworld-shell.default.1.2.3.4.sslip.io
 ```
 
- ### kn
+### kn
+
 ```bash
 kn service describe helloworld-shell -o url
 ```
+
 Example:
+
 ```bash
 http://helloworld-shell.default.1.2.3.4.sslip.io
 ```
