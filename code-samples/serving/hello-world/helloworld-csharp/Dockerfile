@@ -1,10 +1,6 @@
 # Use Microsoft's official build .NET image.
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build-env
 
-# Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
-
 WORKDIR /app
 
 # Copy csproj and restore as distinct layers
@@ -18,14 +14,21 @@ RUN dotnet publish -c Release -o out
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:6.0
 
-# Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
+ARG USER=appuser
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
 
-WORKDIR /app
+# Create and change to the app directory.
+WORKDIR "/home/${USER}/app"
+
+# Add a user so the server will run as a non-root user.
+RUN addgroup --gid $USER_GID $USER && \
+    adduser -u $USER_UID --ingroup $USER --disabled-password $USER
+
 COPY --from=build-env /app/out .
 
-USER appuser
+# Set the non-root user as current.
+USER $USER
 
 # Run the web service on container startup.
 ENTRYPOINT ["dotnet", "helloworld-csharp.dll"]

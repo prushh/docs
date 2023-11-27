@@ -1,10 +1,6 @@
 # Use an SBT image matching the Scala and JDK version.
 FROM hseeberger/scala-sbt:8u265_1.4.2_2.13.3 as builder
 
-# Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
-
 # Copy local code to the container image.
 WORKDIR /app
 COPY build.sbt .
@@ -19,14 +15,22 @@ RUN sbt assembly
 # https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
 FROM openjdk:8-jre-alpine
 
+ARG USER=appuser
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
+
+# Create and change to the app directory.
+WORKDIR "/home/${USER}/app"
+
 # Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
+RUN addgroup -g $USER_GID $USER && \
+    adduser -u $USER_UID -G $USER -D $USER
 
 # Copy the jar to the production image from the builder stage.
-COPY --from=builder /app/target/scala-2.13/helloworld-*.jar /helloworld.jar
+COPY --from=builder /app/target/scala-2.13/helloworld-*.jar ./helloworld.jar
 
-USER appuser
+# Set the non-root user as current.
+USER $USER
 
 # Run the web service on container startup.
-CMD ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/helloworld.jar"]
+CMD ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "./helloworld.jar"]

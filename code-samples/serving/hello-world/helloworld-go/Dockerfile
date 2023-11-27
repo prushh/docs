@@ -2,10 +2,6 @@
 # This is based on Debian and sets the GOPATH to /go.
 FROM golang:latest as builder
 
-# Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
-
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -29,16 +25,23 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -mod=readonly -
 # https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
 FROM alpine:3
 
-# Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
+ARG USER=appuser
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
 
-RUN apk add --no-cache ca-certificates
+# Create and change to the app directory.
+WORKDIR "/home/${USER}/app"
+
+# Add a user so the server will run as a non-root user.
+RUN addgroup -g $USER_GID $USER && \
+    adduser -u $USER_UID -G $USER -D $USER && \
+    apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=builder /app/server /server
+COPY --from=builder /app/server ./server
 
-USER appuser
+# Set the non-root user as current.
+USER $USER
 
 # Run the web service on container startup.
-CMD ["/server"]
+CMD ["./server"]

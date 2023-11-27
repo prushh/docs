@@ -14,10 +14,6 @@
 
 FROM golang AS builder
 
-# Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
-
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -26,15 +22,14 @@ ADD . /go/src/github.com/knative/docs/
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build ./code-samples/serving/kong-routing-go/
 
-FROM gcr.io/distroless/base
+FROM gcr.io/distroless/base:nonroot
 
-# Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
+ENV PORT=8080
 
-EXPOSE 8080
-COPY --from=builder /go/src/github.com/knative/docs/kong-routing-go /sample
+WORKDIR "/home/nonroot/app"
 
-USER appuser
+COPY --from=builder /go/src/github.com/knative/docs/kong-routing-go ./sample
 
-ENTRYPOINT ["/sample"]
+EXPOSE $PORT
+
+ENTRYPOINT ["./sample"]

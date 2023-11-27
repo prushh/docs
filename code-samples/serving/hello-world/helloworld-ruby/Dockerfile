@@ -2,20 +2,27 @@
 # https://hub.docker.com/_/ruby
 FROM ruby:2.6-slim
 
-# Add a user so the server will run as a non-root user.
-RUN addgroup -g 1000 appuser && \
-    adduser -S -u 1000 -G appuser appuser
+ARG USER=appuser
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
+
+ENV BUNDLE_FROZEN=true
+
+# Create and change to the app directory.
+WORKDIR "/home/${USER}/app"
 
 # Install production dependencies.
-WORKDIR /usr/src/app
 COPY Gemfile Gemfile.lock ./
-ENV BUNDLE_FROZEN=true
-RUN gem install bundler && bundle install
+
+RUN addgroup --gid $USER_GID $USER && \
+    adduser -u $USER_UID --ingroup $USER --disabled-password $USER && \
+    gem install bundler && bundle install
 
 # Copy local code to the container image.
-COPY . ./
+COPY app.rb ./
 
-USER appuser
+# Set the non-root user as current.
+USER $USER
 
 # Run the web service on container startup.
 CMD ["ruby", "./app.rb"]
